@@ -86,10 +86,13 @@ def PlotGridSearch(gs, scoring=None, ax=None, colors=None,
     # Create matplotlib.axes if ax is None.
     if ax is None:
         width = np.fmax(n_param*0.3, 6.5)
-        ax = plt.subplots(figsize=(width, 4.5))[1]
+        ax = plt.subplots(figsize=(width + 2, 4.5))[1]
     # -------------------------------------------------------------   
     # Get scoring metrics.
     if scoring is None: scoring = gs.scoring.keys()
+    # Get default line color.      
+    colors = ([ax._get_lines.get_next_color() for _ in 
+               range(n_features)] if colors is None else colors)
     # ============================================================
 
     # =============================================================
@@ -99,16 +102,16 @@ def PlotGridSearch(gs, scoring=None, ax=None, colors=None,
     x = np.arange(n_param)
     # -------------------------------------------------------------
     # Initialize parameters.
-    kwargs = {"train": dict(lw=1, ls='--', alpha=0.8),
-              "test" : dict(lw=2, ls='-')}
+    kwargs = {"train": dict(lw=1, ls='--', alpha=0.8, color="k"),
+              "test" : dict(lw=2, ls='-', color="k")}
     best_lines = []
+    # Patches and labels for ax.leggend.
+    patches = [mpl.lines.Line2D([0],[0], **kwargs["train"]), 
+               mpl.lines.Line2D([0],[0], **kwargs["test"])] 
+    patches+= [mpl.patches.Patch(fc=c, ec='none') for c in colors]
+    labels  = ["Train", "Test"] + list(scoring)
     # -------------------------------------------------------------
     for (n,score) in enumerate(scoring):
-
-        # Get default line color.
-        if colors is None: color = ax._get_lines.get_next_color()
-        else: color = colors[n]
-
         for sample in ('train','test'):
             
             # Mean and standard deviation of scores.
@@ -120,11 +123,11 @@ def PlotGridSearch(gs, scoring=None, ax=None, colors=None,
             # Plot standard deviation of test scores
             if sample=="test": 
                 ax.fill_between(x, lower, upper, 
-                                alpha=0.1, color=color)
+                                alpha=0.1, color=colors[n])
             
             # Plot mean score
-            kwds = {"color":color, "label":f"{score} ({sample})"}
-            ax.plot(x, score_mean, **{**kwargs[sample], **kwds})
+            ax.plot(x, score_mean, **{**kwargs[sample], 
+                                      **{"color":colors[n]}})
     # -------------------------------------------------------------        
         # Determine the best score
         best_index = np.argmax(results[f'rank_test_{score}']==1)
@@ -132,18 +135,18 @@ def PlotGridSearch(gs, scoring=None, ax=None, colors=None,
         best_rank  = x[best_index]
     # -------------------------------------------------------------
         # Annotate the best score.
-        ax.scatter(best_rank, best_score, color=color, 
+        ax.scatter(best_rank, best_score, color=colors[n], 
                    marker='o', s=100, lw=2, facecolor='none')
         ax.annotate(num_format(best_score), (best_rank, best_score),
-                    textcoords='offset points', xytext=(10,10), 
-                    va='center', ha='left', fontsize=12, color=color, 
-                    fontweight='demibold', 
+                    textcoords='offset points', xytext=(0,10), 
+                    va='bottom', ha='center', fontsize=12, 
+                    color=colors[n], fontweight='demibold', 
                     bbox=dict(boxstyle='square', fc='white', 
-                              alpha=0.7, pad=0.2, lw=0))
+                              alpha=0.8, pad=0.2, lw=0))
     # -------------------------------------------------------------    
         # Positional and keyword arguments for `best_line`.
         best_lines.append((((best_rank,)*2, [0, best_score]), 
-                           dict(ls='-.', lw=2, color=color)))
+                           dict(ls='-.', lw=2, color=colors[n])))
     # -------------------------------------------------------------
     # Fix y-axis.
     y_min, y_max = ax.get_ylim()
@@ -159,22 +162,21 @@ def PlotGridSearch(gs, scoring=None, ax=None, colors=None,
     # =============================================================
     ax.set_xticks(x)
     ax.set_xlim(-0.5, n_param-0.5)
-    if len(params) > 1: 
+    xticklabels = results[f'param_{params[0]}'].data
+    if ((isinstance(xticklabels[0], (dict,list,tuple)) | 
+         len(params)>1)): 
         ax.set_xticklabels(np.arange(1, n_param+1))
         ax.set_xlabel(r"$n^{th}$ Set of parameters", fontsize=13)
-        title ="GridSearchCV Results : " + ', '.join(params)
     else:
-        ax.set_xticklabels(results[f'param_{params[0]}'].data)
+        ax.set_xticklabels(xticklabels)
         ax.set_xlabel(params[0], fontsize=13)
-        title = "GridSearchCV Results"
     # -------------------------------------------------------------   
     ax.yaxis.set_major_locator(mpl.ticker.MaxNLocator(6))
-    ax.tick_params(axis='both', labelsize=10.5)
+    ax.tick_params(axis='both', labelsize=11)
     # -------------------------------------------------------------
     ax.spines["right"].set_visible(False)
     ax.spines["top"].set_visible(False)
     ax.set_ylabel('Scores', fontsize=13)
-    ax.set_title(title, fontweight='demibold', fontsize=14)
     ax.set_facecolor('white')
     ax.patch.set_alpha(0)
     # -------------------------------------------------------------
@@ -185,9 +187,12 @@ def PlotGridSearch(gs, scoring=None, ax=None, colors=None,
     ax.text(1.01, 0, "x", fontsize=13, va='center', ha="left", 
             transform=transform)
     # -------------------------------------------------------------
-    ax.legend(edgecolor="grey", borderaxespad=0.25, markerscale=1.5,
-              columnspacing=0.3, handletextpad=0.5, ncol=2,
-              prop=dict(size=12), loc='best') 
+    legend = ax.legend(patches, labels, edgecolor="none", ncol=1,
+                       borderaxespad=0.25, markerscale=1.5, 
+                       columnspacing=0.3, labelspacing=0.7, 
+                       handletextpad=0.5, prop=dict(size=12), 
+                       loc='upper left') 
+    legend.set_bbox_to_anchor([1.01,1], transform = ax.transAxes)
     if tight_layout: plt.tight_layout()
     # =============================================================
     

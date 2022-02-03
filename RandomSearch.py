@@ -92,7 +92,7 @@ def PlotGridSearch(gs, scoring=None, ax=None, colors=None,
     if scoring is None: scoring = gs.scoring.keys()
     # Get default line color.      
     colors = ([ax._get_lines.get_next_color() for _ in 
-               range(n_param)] if colors is None else colors)
+               range(len(scoring)] if colors is None else colors)
     # ============================================================
 
     # =============================================================

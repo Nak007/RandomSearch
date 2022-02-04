@@ -279,6 +279,7 @@ class Modified_RandomizedSearch():
             self.scoring = {'f1_score' : f1_score, 
                             'auc'      : roc_auc_score,
                             'accuracy' : accuracy_score}
+        else: self.scoring = scoring
         
     def fit_estimator(self, estimator, params, X, y):
 
